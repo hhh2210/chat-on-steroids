@@ -848,12 +848,22 @@
   border: 0;
   border-radius: 0;
   background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
   opacity: 0.7;
 }
 
 .clf-stream-tool_call:hover {
   background: transparent;
   opacity: 0.9;
+}
+
+.clf-stream-tool_call:focus-visible {
+  outline: 2px solid color-mix(in srgb, currentColor 38%, transparent);
+  outline-offset: 2px;
+  border-radius: 5px;
 }
 
 .clf-stream-tool_call .clf-stream-text {
@@ -874,6 +884,49 @@
   background: transparent;
   font-size: 0.76rem;
   opacity: 0.7;
+}
+
+.clf-stream-tool-chevron {
+  display: inline-block;
+  margin-left: 0.35rem;
+  font-size: 1rem;
+  line-height: 1;
+  opacity: 0.55;
+  transform: rotate(0deg);
+  transition: transform 0.12s ease, opacity 0.12s ease;
+}
+
+.clf-stream-tool_call[aria-expanded='true'] .clf-stream-tool-chevron {
+  transform: rotate(90deg);
+  opacity: 0.85;
+}
+
+.clf-stream-tool-panel {
+  margin: 0.15rem 0 0.35rem 1.55rem;
+  max-width: min(44rem, calc(100vw - 5rem));
+  font-size: 0.78rem;
+  line-height: 1.45;
+  opacity: 0.72;
+}
+
+.clf-stream-tool-panel[hidden] {
+  display: none;
+}
+
+.clf-stream-tool-meta,
+.clf-stream-tool-change,
+.clf-stream-tool-more {
+  overflow-wrap: anywhere;
+}
+
+.clf-stream-tool-changes {
+  margin-top: 0.2rem;
+}
+
+.clf-stream-tool-change code,
+.clf-stream-tool-meta code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.95em;
 }
 
 .clf-stream-page_tool {

@@ -2101,7 +2101,8 @@ describe('the app-owned chronological stream', () => {
           requestId: 'wfr-app-stream',
           outcome: 'ok',
           durationMs: 3,
-          summary: { kind: 'read', tone: 'neutral', title: 'Read third.ts' }
+          summary: { kind: 'read', tone: 'neutral', title: 'Read third.ts' },
+          changes: [{ path: 'src/third.ts', added: 2, removed: 1, approximate: false }]
         },
         { seq: 2, time: 200, kind: 'progress', turnId, agent: 'prime', text: 'Checking the repository' },
         {
@@ -2137,6 +2138,37 @@ describe('the app-owned chronological stream', () => {
     expect(overwriteRows(section, '.clf-stream-tool_call')).toHaveLength(2);
     expect(section.querySelectorAll('.pointer-events-none.contents')).toHaveLength(0);
     expect(section.getAttribute('data-clf-turn-replaced')).toBe('1');
+  });
+
+  it('makes app-owned tool rows real disclosure buttons without exposing raw tool I/O', async () => {
+    live = await harness(undefined, { activity });
+    renderingOn();
+    const section = assistantTurn(live.document, turnId, []);
+    await bindFiberRequest(section, 'wfr-app-stream');
+
+    live.hook.renderStreams();
+
+    const buttons = overwriteRows(section, 'button.clf-stream-tool_call') as HTMLButtonElement[];
+    expect(buttons).toHaveLength(2);
+    const button = buttons.find((node) => (node.textContent || '').includes('Read third.ts'))!;
+    expect(button.type).toBe('button');
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+    const panel = button.parentElement!.querySelector('.clf-stream-tool-panel') as HTMLElement;
+    expect(panel.id).toBe(button.getAttribute('aria-controls'));
+    expect(panel.hidden).toBe(true);
+
+    button.click();
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+    expect(panel.hidden).toBe(false);
+    expect(panel.textContent).toContain('read_file · completed · 3 ms');
+    expect(panel.textContent).toContain('src/third.ts');
+    expect(panel.textContent).toContain('+2 −1');
+    expect(panel.textContent).not.toContain('args');
+    expect(panel.textContent).not.toContain('result');
+
+    button.click();
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+    expect(panel.hidden).toBe(true);
   });
 
   it('keeps recorder calls with no turn id visible in the turn whose time window they ran in', async () => {

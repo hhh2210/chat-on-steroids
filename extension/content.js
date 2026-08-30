@@ -4386,10 +4386,59 @@
     if (!(target.textContent || '').trim() && fallback) target.textContent = fallback;
   }
 
+  const expandedStreamTools = new Set();
+
+  function streamToolPanel(entry, expanded) {
+    const panel = document.createElement('div');
+    panel.className = 'clf-stream-tool-panel';
+    panel.id = `clf-stream-tool-${entry.seq}`;
+    panel.hidden = !expanded;
+
+    const meta = document.createElement('div');
+    meta.className = 'clf-stream-tool-meta';
+    const tool = document.createElement('code');
+    tool.textContent = entry.tool || 'tool';
+    meta.append(tool);
+    const outcome = entry.outcome === 'error' ? 'failed' : entry.outcome === 'rejected' ? 'refused' : 'completed';
+    meta.append(` · ${outcome}`);
+    if (Number.isFinite(Number(entry.durationMs)) && Number(entry.durationMs) >= 0) {
+      meta.append(` · ${Math.round(Number(entry.durationMs))} ms`);
+    }
+    panel.append(meta);
+
+    const changes = Array.isArray(entry.changes) ? entry.changes : [];
+    if (changes.length > 0) {
+      const list = document.createElement('div');
+      list.className = 'clf-stream-tool-changes';
+      for (const change of changes.slice(0, 12)) {
+        const line = document.createElement('div');
+        line.className = 'clf-stream-tool-change';
+        const path = document.createElement('code');
+        path.textContent = typeof change.path === 'string' ? change.path : '';
+        line.append(path);
+        const added = Number(change.added);
+        const removed = Number(change.removed);
+        if (Number.isFinite(added) || Number.isFinite(removed)) {
+          line.append(`  +${Number.isFinite(added) ? added : 0} −${Number.isFinite(removed) ? removed : 0}`);
+        }
+        list.append(line);
+      }
+      if (changes.length > 12) {
+        const more = document.createElement('div');
+        more.className = 'clf-stream-tool-more';
+        more.textContent = `+${changes.length - 12} more changed files`;
+        list.append(more);
+      }
+      panel.append(list);
+    }
+    return panel;
+  }
+
   function streamRow(entry) {
-    const row = document.createElement('div');
+    const row = document.createElement(entry.kind === 'tool_call' ? 'button' : 'div');
     row.className = `clf-stream-row clf-stream-${entry.kind}`;
     row.dataset.clfSeq = String(entry.seq);
+    if (entry.kind === 'tool_call') row.type = 'button';
 
     const icon = document.createElement('span');
     icon.className = 'clf-stream-icon';
@@ -4445,7 +4494,36 @@
       when.textContent = clockText(entry.time);
       row.append(when);
     }
-    return row;
+    if (entry.kind !== 'tool_call') return row;
+
+    // App-owned rows replace ChatGPT's native tool disclosure UI, so a line that looks like
+    // an execution row must keep the same obvious affordance instead of becoming dead text.
+    // Raw args/results deliberately stay in the local session store; this disclosure contains
+    // only metadata already allowed through /activity.
+    const key = entry.callId || `seq:${entry.seq}`;
+    const expanded = expandedStreamTools.has(key);
+    const chevron = document.createElement('span');
+    chevron.className = 'clf-stream-tool-chevron';
+    chevron.setAttribute('aria-hidden', 'true');
+    chevron.textContent = '›';
+    row.append(chevron);
+    const panel = streamToolPanel(entry, expanded);
+    row.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    row.setAttribute('aria-controls', panel.id);
+    row.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const showing = row.getAttribute('aria-expanded') === 'true';
+      row.setAttribute('aria-expanded', showing ? 'false' : 'true');
+      panel.hidden = showing;
+      if (showing) expandedStreamTools.delete(key);
+      else expandedStreamTools.add(key);
+    });
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'clf-stream-tool-disclosure';
+    wrapper.append(row, panel);
+    return wrapper;
   }
 
   /**
