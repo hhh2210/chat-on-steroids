@@ -1,0 +1,36 @@
+name: Follow-up workspace
+
+on:
+  push:
+    branches: [work/followup-validation-20260905]
+    paths: [.github/workflows/followup-workspace.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  workspace:
+    if: github.repository == 'hhh2210/chat-on-steroids'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          repository: totec448-spec/chat-on-steroids
+          ref: f9d0e26db02fdd0b68cf1188a4998baa979eebf5
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Package isolated source and test dependencies
+        run: |
+          tar --exclude=.git --exclude=node_modules/electron/dist --exclude=node_modules/@img --exclude=node_modules/@esbuild/win32-x64 --exclude=node_modules/@esbuild/darwin-arm64 -czf "$RUNNER_TEMP/followup-workspace.tar.gz" .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: followup-workspace
+          path: ${{ runner.temp }}/followup-workspace.tar.gz
+          retention-days: 2
+          compression-level: 0
