@@ -1,0 +1,101 @@
+name: Validate follow-up contributions
+
+on:
+  push:
+    branches: [work/followup-validation-20260905]
+    paths: [.github/workflows/followup-validate.yml]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: followup-contributions
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: github.repository == 'hhh2210/chat-on-steroids'
+    name: Verify ${{ matrix.slice }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - slice: desktop
+            digest: 0af945a7a7c9d84a06676f74fa809880dbaac1e98b3d0fc34425c4a172557823
+            branch: fix/desktop-reply-provenance-20260905
+            message: Preserve Desktop reply provenance across helper replacement
+          - slice: activity
+            digest: 05a019ad2e8128f026bf229421f94934afc7518adace812f36bb1cf00067584d
+            branch: feat/activity-tool-details-20260905
+            message: Add native disclosures to activity tool rows
+    env:
+      BASE: f9d0e26db02fdd0b68cf1188a4998baa979eebf5
+      SLICE: ${{ matrix.slice }}
+      DIGEST: ${{ matrix.digest }}
+      TARGET_BRANCH: ${{ matrix.branch }}
+      COMMIT_MESSAGE: ${{ matrix.message }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+      - name: Reconstruct the exact tested patch on canonical main
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 --decode "contrib-validation/$SLICE.patch.gz.b64" | gzip -d > "$RUNNER_TEMP/contribution.patch"
+          echo "$DIGEST  $RUNNER_TEMP/contribution.patch" | sha256sum --check
+          git remote rename origin fork
+          git remote add origin https://github.com/totec448-spec/chat-on-steroids.git
+          git fetch origin main
+          test "$(git rev-parse origin/main)" = "$BASE"
+          git switch --detach "$BASE"
+          git config user.name hhh2210
+          git config user.email 107194248+hhh2210@users.noreply.github.com
+          git apply --check "$RUNNER_TEMP/contribution.patch"
+          git apply "$RUNNER_TEMP/contribution.patch"
+          if [ "$SLICE" = desktop ]; then
+            git add AGENTS.md src/main/computer/index.ts test/computer-generation.test.ts
+          else
+            git add extension/content.js extension/overlay.css test/content-script.test.ts
+          fi
+          git diff --cached --check
+          git commit -m "$COMMIT_MESSAGE"
+          test "$(git rev-parse HEAD^)" = "$BASE"
+          test "$(git diff --name-only "$BASE" HEAD | wc -l)" -eq 3
+          git diff --stat "$BASE" HEAD
+          git rev-parse HEAD
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install complete native dependencies
+        run: npm ci
+      - name: Full repository verification
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run verify 2>&1 | tee "$RUNNER_TEMP/verify-$SLICE.log"
+      - name: Production build
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tee "$RUNNER_TEMP/build-$SLICE.log"
+      - name: Publish only the clean verified contribution branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "$BASE"
+          test -z "$(git status --porcelain --untracked-files=no)"
+          git push fork "HEAD:refs/heads/$TARGET_BRANCH"
+          printf 'Verified branch: %s\nCommit: %s\n' "$TARGET_BRANCH" "$(git rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: verification-${{ matrix.slice }}
+          path: |
+            ${{ runner.temp }}/verify-${{ matrix.slice }}.log
+            ${{ runner.temp }}/build-${{ matrix.slice }}.log
+          if-no-files-found: ignore
+          retention-days: 7
