@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [proof/pr146-input-safety]
   pull_request:
   workflow_dispatch:
 
