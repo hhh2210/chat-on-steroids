@@ -1,0 +1,44 @@
+{
+  "testedRelease": "2.1.39 with capture fix",
+  "method": "actual installed Desktop MCP endpoint; both images fully decoded and visually checked",
+  "captures": [
+    {
+      "phase": "A",
+      "image": {
+        "bytes": 98408,
+        "width": 640,
+        "height": 432,
+        "format": "png",
+        "decoded": true
+      },
+      "imageSha256": "9dba09cc57fdea95bcf04b5fc5ae59a0235af81f50f467a51105b5edd4acfd6d",
+      "target": "dedicated synthetic fixture on inactive Desktop 2",
+      "unchanged": {
+        "spaces": true,
+        "membership": true,
+        "foreground": true,
+        "clipboard": true,
+        "mouse": true
+      }
+    },
+    {
+      "phase": "B",
+      "image": {
+        "bytes": 98306,
+        "width": 640,
+        "height": 432,
+        "format": "png",
+        "decoded": true
+      },
+      "imageSha256": "e802bdc2c5eba4cd74ca88345f0fcb5a9ec67c95b5e3458b895430a6bd2a21f6",
+      "target": "dedicated synthetic fixture on inactive Desktop 2",
+      "unchanged": {
+        "spaces": true,
+        "membership": true,
+        "foreground": true,
+        "clipboard": true,
+        "mouse": true
+      }
+    }
+  ]
+}
